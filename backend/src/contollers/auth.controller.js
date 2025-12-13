@@ -127,7 +127,7 @@ exports.login = async (req, res) => {
             httpOnly: true,
             secure: true,          // false on localhost, true in production with HTTPS
             sameSite: 'none',       // important for cross-origin
-            path: '/',
+            path: '/api/auth/refresh',
             maxAge: 30*24*60*60*1000
         });
 
@@ -419,7 +419,7 @@ exports.refresh = async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: 'none',       // must match login
-            path: '/',
+            path: '/api/auth/refresh',
             maxAge: 30*24*60*60*1000
         });
 

@@ -12,16 +12,22 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://auth-project-44r4t8vxg-sandeeprajputs-projects.vercel.app",
+];
+
 app.use(
     cors({
-        // origin: 'http://localhost:5173',
-        // origin: process.env.CLIENT_URL,
-        origin: [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "https://authproject.vercel.app", // your Vercel frontend
-        ],
-        credentials: true
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            callback(new Error("CORS not allowed"));
+        },
+        credentials: true,
     })
 );
 
