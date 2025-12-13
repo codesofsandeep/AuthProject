@@ -1,0 +1,68 @@
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0 20px;
+    background-color: #f9fafb;
+    color: #111827;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.highlight {
+    color: #f59e0b; /* Amber */
+}
+
+.hero p {
+    max-width: 700px;
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.hero-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.hero-buttons .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.register-btn {
+    background-color: #3b82f6; /* Blue */
+    color: #ffffff;
+}
+
+.register-btn:hover {
+    background-color: #2563eb;
+}
+
+.login-btn {
+    background-color: #10b981; /* Green */
+    color: #ffffff;
+}
+
+.login-btn:hover {
+    background-color: #059669;
+}
+
+.btn-icon {
+    font-size: 1.3rem;
+}
