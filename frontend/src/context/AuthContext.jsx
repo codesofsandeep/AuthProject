@@ -12,7 +12,7 @@
 // //         } catch (err) {
 // //             console.error("Logout request failed", err);
 // //         } finally {
-            
+
 // //             setAccessToken(null);
 // //         }
 // //     };
@@ -137,9 +137,9 @@ export function AuthProvider({ children }) {
     // =====================
     const refreshToken = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:4000/api/auth/refresh', {
-                method: 'POST',
-                credentials: 'include', // important
+            const res = await fetch("https://authproject-2.onrender.com/api/auth/refresh", {
+                method: "POST",
+                credentials: "include",
             });
 
             if (!res.ok) {

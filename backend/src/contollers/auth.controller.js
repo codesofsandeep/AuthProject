@@ -125,7 +125,7 @@ exports.login = async (req, res) => {
         // Send refresh token as HttpOnly cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: false,          // false on localhost, true in production with HTTPS
+            secure: true,          // false on localhost, true in production with HTTPS
             sameSite: 'none',       // important for cross-origin
             path: '/',
             maxAge: 30*24*60*60*1000
@@ -417,7 +417,7 @@ exports.refresh = async (req, res) => {
         // Set new refresh token cookie
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
-            secure: false,
+            secure: true,
             sameSite: 'none',       // must match login
             path: '/',
             maxAge: 30*24*60*60*1000
