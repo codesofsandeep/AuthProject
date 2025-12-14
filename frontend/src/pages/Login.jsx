@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import './Login.css'; 
+import './Login.css';
 
 export default function Login() {
     const { setAccessToken } = useAuth();
@@ -12,12 +12,15 @@ export default function Login() {
     async function submit(e) {
         e.preventDefault();
 
-        const res = await fetch('http://localhost:4000/api/auth/login', {
+        const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+        const res = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
+
 
         if (!res.ok) return alert('Login failed');
 
@@ -30,16 +33,16 @@ export default function Login() {
         <div className="login-container">
             <form onSubmit={submit} className="login-form">
                 <h2 className="login-title">Login</h2>
-                <input 
-                    type="email" 
-                    placeholder="Email" 
+                <input
+                    type="email"
+                    placeholder="Email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                 />
-                <input 
-                    type="password" 
-                    placeholder="Password" 
+                <input
+                    type="password"
+                    placeholder="Password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required

@@ -135,82 +135,118 @@ export function AuthProvider({ children }) {
     // =====================
     // Silent Refresh Function
     // =====================
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
     const refreshToken = useCallback(async () => {
         try {
-            const res = await fetch("https://authproject-2.onrender.com/api/auth/refresh", {
-                method: "POST",
-                credentials: "include",
+            const res = await fetch(`${BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include',
             });
 
-            if (!res.ok) {
-                console.log('Refresh failed:', res.status);
-                return null;
-            }
+            if (!res.ok) return null;
 
             const data = await res.json();
             setAccessToken(data.accessToken);
             return data.accessToken;
-        } catch (err) {
-            console.error('Refresh error:', err);
+        } catch {
             return null;
         }
     }, []);
 
+
     // =====================
     // On App Load: Try Silent Refresh
     // =====================
+    // useEffect(() => {
+    //     async function init() {
+    //         await refreshToken();
+    //         setLoading(false);
+    //     }
+    //     init();
+    // }, [refreshToken]);
+
+    // // =====================
+    // // Axios Private Instance
+    // // =====================
+    // const axiosPrivate = useCallback(() => {
+    //     const instance = api;
+
+    //     // Request interceptor: attach access token
+    //     instance.interceptors.request.use(
+    //         config => {
+    //             if (accessToken) {
+    //                 config.headers['Authorization'] = `Bearer ${accessToken}`;
+    //             }
+    //             return config;
+    //         },
+    //         error => Promise.reject(error)
+    //     );
+
+    //     // Response interceptor: handle 401 automatically
+    //     instance.interceptors.response.use(
+    //         response => response,
+    //         async error => {
+    //             const originalRequest = error.config;
+
+    //             if (error.response?.status === 401 && !originalRequest._retry) {
+    //                 originalRequest._retry = true;
+    //                 const newToken = await refreshToken();
+
+    //                 if (newToken) {
+    //                     originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+    //                     return instance(originalRequest);
+    //                 } else {
+    //                     await logout();
+    //                     return Promise.reject(error);
+    //                 }
+    //             }
+    //             return Promise.reject(error);
+    //         }
+    //     );
+
+    //     return instance;
+    // }, [accessToken, refreshToken, logout]);
+
     useEffect(() => {
-        async function init() {
-            await refreshToken();
-            setLoading(false);
-        }
-        init();
-    }, [refreshToken]);
-
-    // =====================
-    // Axios Private Instance
-    // =====================
-    const axiosPrivate = useCallback(() => {
-        const instance = api;
-
-        // Request interceptor: attach access token
-        instance.interceptors.request.use(
+        const requestIntercept = api.interceptors.request.use(
             config => {
                 if (accessToken) {
-                    config.headers['Authorization'] = `Bearer ${accessToken}`;
+                    config.headers.Authorization = `Bearer ${accessToken}`;
                 }
                 return config;
-            },
-            error => Promise.reject(error)
+            }
         );
 
-        // Response interceptor: handle 401 automatically
-        instance.interceptors.response.use(
-            response => response,
+        const responseIntercept = api.interceptors.response.use(
+            res => res,
             async error => {
-                const originalRequest = error.config;
+                const prevRequest = error.config;
 
-                if (error.response?.status === 401 && !originalRequest._retry) {
-                    originalRequest._retry = true;
+                if (error.response?.status === 401 && !prevRequest._retry) {
+                    prevRequest._retry = true;
                     const newToken = await refreshToken();
 
                     if (newToken) {
-                        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-                        return instance(originalRequest);
+                        prevRequest.headers.Authorization = `Bearer ${newToken}`;
+                        return api(prevRequest);
                     } else {
                         await logout();
-                        return Promise.reject(error);
                     }
                 }
                 return Promise.reject(error);
             }
         );
 
-        return instance;
+        return () => {
+            api.interceptors.request.eject(requestIntercept);
+            api.interceptors.response.eject(responseIntercept);
+        };
     }, [accessToken, refreshToken, logout]);
 
     return (
-        <AuthContext.Provider value={{ accessToken, setAccessToken, logout, axiosPrivate }}>
+        <AuthContext.Provider value={{ accessToken, setAccessToken, logout }}>
+
             {!loading && children}
         </AuthContext.Provider>
     );

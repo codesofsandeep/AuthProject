@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import './Register.css'; // import the CSS
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function Register() {
     const [email, setEmail] = useState("");
@@ -20,14 +21,11 @@ export default function Register() {
 
         try {
             // 1️⃣ Register
-            const registerRes = await fetch(
-                "http://localhost:4000/api/auth/register",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password })
-                }
-            );
+            const registerRes = await fetch(`${BASE_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
             const registerData = await registerRes.json();
 
@@ -37,15 +35,12 @@ export default function Register() {
             }
 
             // 2️⃣ Auto-login after register
-            const loginRes = await fetch(
-                "http://localhost:4000/api/auth/login",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ email, password })
-                }
-            );
+            const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
 
             const loginData = await loginRes.json();
 
