@@ -57,8 +57,10 @@
 //         app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 //     })
 //     .catch(console.error);
-require('dotenv').config();
 
+
+
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
@@ -69,42 +71,32 @@ const protectedRoutes = require('./routes/protected.routes');
 
 const app = express();
 
-// =======================
-// MIDDLEWARE
-// =======================
+/* ===== IMPORTANT FOR RENDER ===== */
+app.set('trust proxy', 1);
+
+/* ===== MIDDLEWARE ===== */
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS setup
-const whitelist = [
-  'http://localhost:5173',
-  'https://auth-project-4aqww1ly3-sandeeprajputs-projects.vercel.app',
-  'https://auth-project-88n2fu8il-sandeeprajputs-projects.vercel.app',
-];
-
+/* ===== CORS (FINAL FIX) ===== */
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow Postman, mobile apps, etc.
-      if (whitelist.includes(origin)) return callback(null, true);
-      callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true, // allow cookies
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: [
+      "https://auth-project-three-brown.vercel.app",
+      "https://auth-project-git-main-sandeeprajputs-projects.vercel.app",
+      "https://auth-project-7vo4bqhni-sandeeprajputs-projects.vercel.app",
+    ],
+    credentials: true,
   })
 );
 
-// =======================
-// ROUTES
-// =======================
-app.get('/', (req, res) => res.send('Auth server up'));
 
+/* ===== ROUTES ===== */
+app.get('/', (req, res) => res.send('Auth server running'));
 app.use('/api/auth', authRoutes);
 app.use('/api', protectedRoutes);
 
-// =======================
-// DATABASE & SERVER
-// =======================
+/* ===== DB + SERVER ===== */
 const PORT = process.env.PORT || 4000;
 
 mongoose
@@ -113,16 +105,4 @@ mongoose
     console.log('MongoDB Connected');
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));
   })
-  .catch((err) => console.error('MongoDB connection error:', err));
-
-// =======================
-// GLOBAL ERROR HANDLER
-// =======================
-app.use((err, req, res, next) => {
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ message: 'CORS Error: This origin is not allowed.' });
-  }
-
-  console.error(err.stack);
-  res.status(500).json({ message: 'Internal Server Error' });
-});
+  .catch(err => console.error(err));
