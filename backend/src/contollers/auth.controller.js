@@ -517,124 +517,124 @@ const jwt = require('jsonwebtoken');
 
 // Create Access Token
 const createAccessToken = (user) =>
-    jwt.sign(
-        { id: user._id, role: user.role },
-        process.env.JWT_ACCESS_SECRET,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
-    );
+  jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
+  );
 
 // Create Refresh Token
 const createRefreshToken = (user) =>
-    jwt.sign(
-        { id: user._id },
-        process.env.JWT_REFRESH_SECRET,
-        { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '30d' }
-    );
+  jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '30d' }
+  );
 
 // ==================== REGISTER ====================
 exports.register = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        if (!email || !password)
-            return res.status(400).json({ message: 'Email and password are required' });
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password are required' });
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser)
-            return res.status(409).json({ message: 'User already exists' });
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(409).json({ message: 'User already exists' });
 
-        const hashedPassword = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || 12));
+    const hashedPassword = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || 12));
 
-        const user = await User.create({ email, password: hashedPassword });
+    const user = await User.create({ email, password: hashedPassword });
 
-        return res.status(201).json({
-            message: 'User registered successfully',
-            user: { email: user.email, role: user.role },
-        });
-    } catch (err) {
-        console.error('Register error:', err);
-        res.status(500).json({ message: 'Server error' });
-    }
+    return res.status(201).json({
+      message: 'User registered successfully',
+      user: { email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 // ==================== LOGIN ====================
 exports.login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        if (!email || !password)
-            return res.status(400).json({ message: 'Email and password are required' });
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password are required' });
 
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) return res.status(400).json({ message: 'Invalid credentials' });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const accessToken = createAccessToken(user);
-        const refreshToken = createRefreshToken(user);
+    const accessToken = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
 
-        // Send refresh token as HttpOnly cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // only HTTPS in prod
-            sameSite: 'None', // required for cross-origin (Vercel frontend)
-            path: '/',
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        });
+    // Send refresh token as HttpOnly cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // only HTTPS in prod
+      sameSite: 'None', // required for cross-origin (Vercel frontend)
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
 
-        res.json({
-            accessToken,
-            user: { email: user.email, role: user.role },
-        });
-    } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).json({ message: 'Server error' });
-    }
+    res.json({
+      accessToken,
+      user: { email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 // ==================== REFRESH TOKEN ====================
 exports.refresh = async (req, res) => {
-    try {
-        const token = req.cookies.refreshToken;
-        if (!token) return res.status(401).json({ message: 'No refresh token provided' });
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) return res.status(401).json({ message: 'No refresh token provided' });
 
-        jwt.verify(token, process.env.JWT_REFRESH_SECRET, async (err, decoded) => {
-            if (err) return res.status(401).json({ message: 'Invalid refresh token' });
+    jwt.verify(token, process.env.JWT_REFRESH_SECRET, async (err, decoded) => {
+      if (err) return res.status(401).json({ message: 'Invalid refresh token' });
 
-            const user = await User.findById(decoded.id);
-            if (!user) return res.status(404).json({ message: 'User not found' });
+      const user = await User.findById(decoded.id);
+      if (!user) return res.status(404).json({ message: 'User not found' });
 
-            const newAccessToken = createAccessToken(user);
-            const newRefreshToken = createRefreshToken(user);
+      const newAccessToken = createAccessToken(user);
+      const newRefreshToken = createRefreshToken(user);
 
-            // Set new refresh token cookie
-            res.cookie('refreshToken', newRefreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'None',
-                path: '/',
-                maxAge: 30 * 24 * 60 * 60 * 1000,
-            });
-
-            res.json({
-                accessToken: newAccessToken,
-                user: { email: user.email, role: user.role },
-            });
-        });
-    } catch (err) {
-        console.error('Refresh error:', err);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// ==================== LOGOUT ====================
-exports.logout = async (req, res) => {
-    res.clearCookie('refreshToken', {
+      // Set new refresh token cookie
+      res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'None',
         path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      res.json({
+        accessToken: newAccessToken,
+        user: { email: user.email, role: user.role },
+      });
     });
-    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Refresh error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ==================== LOGOUT ====================
+exports.logout = async (req, res) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'None',
+    path: '/',
+  });
+  res.json({ message: 'Logged out successfully' });
 };
