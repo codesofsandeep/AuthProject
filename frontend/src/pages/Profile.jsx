@@ -32,7 +32,7 @@ export default function Profile() {
                 const res = await api.get("/profile");
                 setData(res.data);
             } catch (err) {
-                console.error("Profile load error:", err);
+                console.error("Profile load errors:", err);
             }
         };
         loadProfile();
