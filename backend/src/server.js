@@ -58,7 +58,6 @@
 //     })
 //     .catch(console.error);
 
-
 require('dotenv').config();
 
 const express = require('express');
@@ -71,11 +70,13 @@ const protectedRoutes = require('./routes/protected.routes');
 
 const app = express();
 
-// ========== MIDDLEWARE ==========
+// =======================
+// MIDDLEWARE
+// =======================
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ CORS setup
+// CORS setup
 const whitelist = [
   'http://localhost:5173',
   'https://auth-project-4aqww1ly3-sandeeprajputs-projects.vercel.app',
@@ -85,25 +86,34 @@ const whitelist = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin like mobile apps or Postman
+      // allow requests with no origin (Postman, mobile apps, etc.)
       if (!origin) return callback(null, true);
 
       if (whitelist.includes(origin)) {
         return callback(null, true);
       }
+
       callback(new Error('Not allowed by CORS'));
     },
-    credentials: true, // allow cookies
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 );
 
-// ========== ROUTES ==========
+// Preflight requests for all routes
+app.options('*', cors({ origin: whitelist, credentials: true }));
+
+// =======================
+// ROUTES
+// =======================
 app.get('/', (req, res) => res.send('Auth server up'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api', protectedRoutes);
 
-// ========== DATABASE & SERVER ==========
+// =======================
+// DATABASE & SERVER
+// =======================
 const PORT = process.env.PORT || 4000;
 
 mongoose
@@ -113,3 +123,15 @@ mongoose
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));
   })
   .catch((err) => console.error('MongoDB connection error:', err));
+
+// =======================
+// GLOBAL ERROR HANDLER
+// =======================
+app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ message: 'CORS Error: This origin is not allowed.' });
+  }
+
+  console.error(err.stack);
+  res.status(500).json({ message: 'Internal Server Error' });
+});
