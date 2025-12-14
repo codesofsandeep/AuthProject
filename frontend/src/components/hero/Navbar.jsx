@@ -1,27 +1,43 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import './Navbar.css';
-import { FaBars, FaTimes } from 'react-icons/fa'; // Icons kept
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { FaBars, FaTimes } from "react-icons/fa";
+import { useAuth } from "../../context/AuthContext";
+import "./Navbar.css";
 
 const Navbar = () => {
     const [menuOpen, setMenuOpen] = useState(false);
-
-    const toggleMenu = () => setMenuOpen(!menuOpen);
+    const { isAuthenticated, user, logout } = useAuth();
 
     return (
         <nav className="navbar">
             <div className="container">
-                <div className="logo">
-                    <h1>AuthProject</h1>
-                </div>
+                <h1 className="logo">AuthProject</h1>
 
-                <ul className={`nav-links ${menuOpen ? 'active' : ''}`}>
-                    <li><Link to="/" onClick={() => setMenuOpen(false)}>Home</Link></li>
-                    <li><Link to="/about" onClick={() => setMenuOpen(false)}>About Project</Link></li>
-                    <li><Link to="/register" onClick={() => setMenuOpen(false)}>Try the Project</Link></li>
+                <ul className={`nav-links ${menuOpen ? "active" : ""}`}>
+                    <li><Link to="/">Home</Link></li>
+                    <li><Link to="/about">About</Link></li>
+
+                    {!isAuthenticated && (
+                        <>
+                            <li><Link to="/register">Register</Link></li>
+                            <li><Link to="/login">Login</Link></li>
+                        </>
+                    )}
+
+                    {isAuthenticated && (
+                        <>
+                            <li><Link to="/profile">Profile</Link></li>
+
+                            {user?.roles?.includes("admin") && (
+                                <li><Link to="/admin">Admin</Link></li>
+                            )}
+
+                            
+                        </>
+                    )}
                 </ul>
 
-                <div className="icon" onClick={toggleMenu}>
+                <div className="icon" onClick={() => setMenuOpen(!menuOpen)}>
                     {menuOpen ? <FaTimes /> : <FaBars />}
                 </div>
             </div>

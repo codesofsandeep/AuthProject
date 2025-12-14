@@ -12,7 +12,7 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
-    const { setAccessToken } = useAuth();
+    const { setAccessToken, setUser } = useAuth();
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -50,7 +50,9 @@ export default function Register() {
             }
 
             setAccessToken(loginData.accessToken);
+            setUser(loginData.user);    
             navigate("/profile");
+
 
         } catch (err) {
             console.error(err);

@@ -40,6 +40,8 @@ const protectedRoutes = require('./routes/protected.routes');
 
 app.use('/api', protectedRoutes);
 
+
+
 const PORT = process.env.PORT || 4000;
 
 mongoose

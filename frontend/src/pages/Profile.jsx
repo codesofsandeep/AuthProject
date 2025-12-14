@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import './Profile.css'; // import the CSS file
+import './Profile.css';
 
 export default function Profile() {
-    const { logout, axiosPrivate } = useAuth();
+    const { logout, axiosPrivate, user } = useAuth();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
 
@@ -13,17 +13,30 @@ export default function Profile() {
         navigate("/login", { replace: true });
     };
 
+    // useEffect(() => {
+    //     const loadProfile = async () => {
+    //         try {
+    //             const res = await axiosPrivate().get("/profile");
+    //             setData(res.data);
+    //         } catch (err) {
+    //             console.error("Profile load error:", err);
+    //         }
+    //     };
+    //     loadProfile();
+    // }, [axiosPrivate]);
+
     useEffect(() => {
         const loadProfile = async () => {
             try {
-                const res = await axiosPrivate().get("/profile");
+                const api = axiosPrivate();
+                const res = await api.get("/profile");
                 setData(res.data);
             } catch (err) {
                 console.error("Profile load error:", err);
             }
         };
         loadProfile();
-    }, [axiosPrivate]);
+    }, []);
 
     return (
         <div className="profile-container">
@@ -33,6 +46,9 @@ export default function Profile() {
                     <pre className="profile-data">{JSON.stringify(data, null, 2)}</pre>
                 ) : (
                     <p className="loading-text">Loading profile...</p>
+                )}
+                {user?.roles?.includes("admin") && (
+                    <p className="admin-badge">Admin Access ✅</p>
                 )}
                 <button className="logout-button" onClick={handleLogout}>
                     Logout

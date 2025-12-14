@@ -110,14 +110,18 @@ exports.login = async (req, res) => {
         if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
         // Generate tokens
-        const accessToken = signAccess({ sub: user._id.toString(), roles: user.roles });
-        const refreshToken = signRefresh({ sub: user._id.toString() });
+        // const accessToken = signAccess({ sub: user._id.toString(), roles: user.roles });
+        // const refreshToken = signRefresh({ sub: user._id.toString() });
+
+        const accessToken = signAccess(user);
+        const refreshToken = signRefresh(user);
+
 
         // Store hashed refresh token in DB
         await RefreshToken.create({
             token: hashToken(refreshToken),
             user: user._id,
-            expiresAt: new Date(Date.now() + 30*24*60*60*1000), // 30 days
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
             ip: req.ip,
             userAgent: req.get('User-Agent')
         });
@@ -128,7 +132,7 @@ exports.login = async (req, res) => {
             secure: true,          // false on localhost, true in production with HTTPS
             sameSite: 'none',       // important for cross-origin
             path: '/api/auth/refresh',
-            maxAge: 30*24*60*60*1000
+            maxAge: 30 * 24 * 60 * 60 * 1000
         });
 
         // Send access token in response
@@ -147,44 +151,89 @@ exports.login = async (req, res) => {
 
 // Register
 
+// exports.register = async (req, res) => {
+//     try {
+//         const { email, password } = req.body;
+
+//         if (!email || !password) {
+//             return res.status(400).json({ message: 'Email and password are required' });
+//         }
+
+//         const existingUser = await User.findOne({ email });
+//         if (existingUser) return res.status(409).json({ message: 'User already exists' });
+
+//         const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS) || 12);
+
+//         // Create new user with default role 'user'
+//         const newUser = await User.create({
+//             email,
+//             passwordHash,
+//             roles: ['user']
+//         });
+
+//         // Generate tokens immediately (optional)
+//         const accessToken = signAccess(newUser);
+//         const refreshToken = signRefresh(newUser);
+
+//         await RefreshToken.create({
+//             token: hashToken(refreshToken),
+//             user: newUser._id,
+//             expiresAt: new Date(Date.now() + 30*24*60*60*1000),
+//             ip: req.ip,
+//             userAgent: req.get('User-Agent')
+//         });
+
+//         // Send cookie
+//         res.cookie('refreshToken', refreshToken, {
+//             httpOnly: true,
+//             secure: true,
+//             sameSite: 'none',
+//             path: '/api/auth/refresh',
+//             maxAge: 30*24*60*60*1000
+//         });
+
+//         res.status(201).json({
+//             accessToken,
+//             user: {
+//                 id: newUser._id,
+//                 email: newUser.email,
+//                 roles: newUser.roles
+//             }
+//         });
+
+//     } catch (err) {
+//         console.error('Register error:', err);
+//         res.status(500).json({ message: 'Registration failed' });
+//     }
+// };
+
+
 exports.register = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Validate input
-        if (!email || !password) {
+        if (!email || !password)
             return res.status(400).json({ message: 'Email and password are required' });
-        }
 
-        // 2. Check if user already exists
         const existingUser = await User.findOne({ email });
-        if (existingUser) {
+        if (existingUser)
             return res.status(409).json({ message: 'User already exists' });
-        }
 
-        // 3. Hash password
-        const passwordHash = await bcrypt.hash(
-            password,
-            Number(process.env.BCRYPT_ROUNDS) || 12
-        );
+        const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS) || 12);
 
-        // 4. Create user
-        await User.create({
+        const newUser = await User.create({
             email,
             passwordHash,
-            roles: ['user']
+            roles: ['user'], // always default to user
         });
 
-        // 5. Send response
-        res.status(201).json({
-            message: 'User registered successfully'
-        });
-
+        res.status(201).json({ message: 'User registered successfully' });
     } catch (err) {
-        console.error('Register error:', err);
+        console.error(err);
         res.status(500).json({ message: 'Registration failed' });
     }
 };
+
 
 // Logout
 
@@ -398,10 +447,10 @@ exports.refresh = async (req, res) => {
         if (!user) return res.status(401).json({ message: 'User not found' });
 
         // Generate new tokens
-        const newAccessToken = signAccess({ sub: user._id.toString(), roles: user.roles });
-        const newRefreshToken = signRefresh({ sub: user._id.toString() });
+        const newAccessToken = signAccess(user);
+        const newRefreshToken = signRefresh(user);
 
-        // Rotate refresh token
+        // Rotate token in DB
         storedToken.revokedAt = new Date();
         storedToken.replacedByToken = hashToken(newRefreshToken);
         await storedToken.save();
@@ -409,18 +458,18 @@ exports.refresh = async (req, res) => {
         await RefreshToken.create({
             token: hashToken(newRefreshToken),
             user: user._id,
-            expiresAt: new Date(Date.now() + 30*24*60*60*1000),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             ip: req.ip,
             userAgent: req.get('User-Agent')
         });
 
-        // Set new refresh token cookie
+        // Send cookie
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'none',       // must match login
+            sameSite: 'none',
             path: '/api/auth/refresh',
-            maxAge: 30*24*60*60*1000
+            maxAge: 30 * 24 * 60 * 60 * 1000
         });
 
         res.json({ accessToken: newAccessToken });
@@ -431,3 +480,31 @@ exports.refresh = async (req, res) => {
     }
 };
 
+// route: POST /api/admin/create-user
+exports.adminCreateUser = async (req, res) => {
+    try {
+        const { email, password, roles } = req.body;
+
+        // Check if logged-in user is admin
+        if (!req.user?.roles.includes('admin')) {
+            return res.status(403).json({ message: 'Only admins can create users with roles' });
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser)
+            return res.status(409).json({ message: 'User already exists' });
+
+        const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS) || 12);
+
+        const newUser = await User.create({
+            email,
+            passwordHash,
+            roles: roles && roles.length ? roles : ['user'], // assign roles provided by admin
+        });
+
+        res.status(201).json({ message: 'User created successfully', user: newUser });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Admin user creation failed' });
+    }
+};

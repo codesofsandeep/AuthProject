@@ -1,106 +1,120 @@
-// // import { createContext, useContext, useEffect, useState } from 'react';
-
-// // const AuthContext = createContext(null);
-
-// // export function AuthProvider({ children }) {
-// //     const [accessToken, setAccessToken] = useState(null);
-// //     const [loading, setLoading] = useState(true);
-
-// //     const logout = async () => {
-// //         try {
-// //             await api.post("/auth/logout", {}, { withCredentials: true });
-// //         } catch (err) {
-// //             console.error("Logout request failed", err);
-// //         } finally {
-
-// //             setAccessToken(null);
-// //         }
-// //     };
-
-
-// //     // Silent refresh on app load
-// //     useEffect(() => {
-// //         async function refresh() {
-// //             try {
-// //                 const res = await fetch('http://localhost:4000/api/auth/refresh', {
-// //                     method: 'POST',
-// //                     credentials: 'include', // important!
-// //                 });
-
-// //                 if (res.ok) {
-// //                     const data = await res.json();
-// //                     setAccessToken(data.accessToken);
-// //                 } else {
-// //                     console.log('Refresh failed:', res.status);
-// //                 }
-// //             } catch (err) {
-// //                 console.error('Refresh error:', err);
-// //             } finally {
-// //                 setLoading(false);
-// //             }
-// //         }
-
-// //         refresh();
-// //     }, []);
-
-// //     return (
-// //         <AuthContext.Provider value={{ accessToken, setAccessToken }}>
-// //             {!loading && children}
-// //         </AuthContext.Provider>
-// //     );
-// // }
-
-// // export const useAuth = () => useContext(AuthContext);
-
-
-// import { createContext, useContext, useEffect, useState } from 'react';
-// import api from "../api/axios";
+// import {
+//     createContext,
+//     useContext,
+//     useEffect,
+//     useState,
+//     useCallback,
+// } from "react";
+// import axios from "../api/axios"; // your axios instance
 
 // const AuthContext = createContext(null);
 
 // export function AuthProvider({ children }) {
 //     const [accessToken, setAccessToken] = useState(null);
+//     const [user, setUser] = useState(null); // user info + roles
 //     const [loading, setLoading] = useState(true);
 
-//     const logout = async () => {
+//     const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+//     // ======================
+//     // LOGOUT
+//     // ======================
+//     const logout = useCallback(async () => {
 //         try {
-//             await api.post("/auth/logout", {}, { withCredentials: true });
+//             await axios.post("/auth/logout", {}, { withCredentials: true });
 //         } catch (err) {
-//             console.error("Logout request failed", err);
+//             console.error("Logout failed", err);
 //         } finally {
-//             setAccessToken(null); //  client-side logout
+//             setAccessToken(null);
+//             setUser(null);
 //         }
-//     };
-
-//     // Silent refresh on app load
-//     useEffect(() => {
-//         async function refresh() {
-//             try {
-//                 const res = await fetch(
-//                     'http://localhost:4000/api/auth/refresh',
-//                     {
-//                         method: 'POST',
-//                         credentials: 'include',
-//                     }
-//                 );
-
-//                 if (res.ok) {
-//                     const data = await res.json();
-//                     setAccessToken(data.accessToken);
-//                 }
-//             } catch (err) {
-//                 console.error('Refresh error:', err);
-//             } finally {
-//                 setLoading(false);
-//             }
-//         }
-
-//         refresh();
 //     }, []);
+
+//     // ======================
+//     // REFRESH TOKEN
+//     // ======================
+//     const refreshToken = useCallback(async () => {
+//         try {
+//             const res = await fetch(`${BASE_URL}/auth/refresh`, {
+//                 method: "POST",
+//                 credentials: "include", // important to send cookies
+//             });
+
+//             if (!res.ok) return null;
+
+//             const data = await res.json();
+
+//             setAccessToken(data.accessToken);
+//             setUser(data.user); // must come from backend
+//             return data.accessToken;
+//         } catch (err) {
+//             console.error("Refresh token error:", err);
+//             return null;
+//         }
+//     }, [BASE_URL]);
+
+//     // ======================
+//     // INITIAL SILENT REFRESH
+//     // ======================
+//     useEffect(() => {
+//         (async () => {
+//             await refreshToken();
+//             setLoading(false);
+//         })();
+//     }, [refreshToken]);
+
+//     // ======================
+//     // AXIOS PRIVATE INSTANCE
+//     // ======================
+//     const axiosPrivate = useCallback(() => {
+//         const instance = axios;
+
+//         // Request interceptor: attach access token
+//         instance.interceptors.request.use(
+//             (config) => {
+//                 if (accessToken) {
+//                     config.headers["Authorization"] = `Bearer ${accessToken}`;
+//                 }
+//                 config.withCredentials = true;
+//                 return config;
+//             },
+//             (error) => Promise.reject(error)
+//         );
+
+//         // Response interceptor: handle 401 automatically
+//         instance.interceptors.response.use(
+//             (res) => res,
+//             async (error) => {
+//                 const prevRequest = error.config;
+//                 if (error.response?.status === 401 && !prevRequest._retry) {
+//                     prevRequest._retry = true;
+//                     const newToken = await refreshToken();
+
+//                     if (newToken) {
+//                         prevRequest.headers["Authorization"] = `Bearer ${newToken}`;
+//                         return instance(prevRequest);
+//                     }
+
+//                     await logout();
+//                 }
+//                 return Promise.reject(error);
+//             }
+//         );
+
+//         return instance;
+//     }, [accessToken, refreshToken, logout]);
 
 //     return (
 //         <AuthContext.Provider
-//             value={{ accessToken, setAccessToken, logout }}  // ✅ FIX
+//             value={{
+//                 accessToken,
+//                 setAccessToken,
+//                 user,
+//                 isAuthenticated: !!accessToken,
+//                 logout,
+//                 axiosPrivate,
+//                 loading,
+//             }}
 //         >
 //             {!loading && children}
 //         </AuthContext.Provider>
@@ -110,143 +124,110 @@
 // export const useAuth = () => useContext(AuthContext);
 
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import api from '../api/axios';
+
+//AuthContext
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import axios from "../api/axios";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [accessToken, setAccessToken] = useState(null);
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // =====================
-    // Logout Function
-    // =====================
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
     const logout = useCallback(async () => {
         try {
-            await api.post('/auth/logout', {}, { withCredentials: true });
+            await axios.post("/auth/logout", {}, { withCredentials: true });
         } catch (err) {
-            console.error('Logout failed:', err);
+            console.error("Logout failed", err);
         } finally {
             setAccessToken(null);
+            setUser(null);
         }
     }, []);
-
-    // =====================
-    // Silent Refresh Function
-    // =====================
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
     const refreshToken = useCallback(async () => {
         try {
             const res = await fetch(`${BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                credentials: 'include',
+                method: "POST",
+                credentials: "include",
             });
 
             if (!res.ok) return null;
 
             const data = await res.json();
             setAccessToken(data.accessToken);
-            return data.accessToken;
-        } catch {
+
+            // setUser(data.user); 
+            // return data.accessToken;
+             return data.accessToken;
+        } catch (err) {
+            console.error("Refresh token error:", err);
             return null;
         }
-    }, []);
+    }, [BASE_URL]);
 
-
-    // =====================
-    // On App Load: Try Silent Refresh
-    // =====================
-    // useEffect(() => {
-    //     async function init() {
-    //         await refreshToken();
-    //         setLoading(false);
-    //     }
-    //     init();
-    // }, [refreshToken]);
-
-    // // =====================
-    // // Axios Private Instance
-    // // =====================
-    // const axiosPrivate = useCallback(() => {
-    //     const instance = api;
-
-    //     // Request interceptor: attach access token
-    //     instance.interceptors.request.use(
-    //         config => {
-    //             if (accessToken) {
-    //                 config.headers['Authorization'] = `Bearer ${accessToken}`;
-    //             }
-    //             return config;
-    //         },
-    //         error => Promise.reject(error)
-    //     );
-
-    //     // Response interceptor: handle 401 automatically
-    //     instance.interceptors.response.use(
-    //         response => response,
-    //         async error => {
-    //             const originalRequest = error.config;
-
-    //             if (error.response?.status === 401 && !originalRequest._retry) {
-    //                 originalRequest._retry = true;
-    //                 const newToken = await refreshToken();
-
-    //                 if (newToken) {
-    //                     originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-    //                     return instance(originalRequest);
-    //                 } else {
-    //                     await logout();
-    //                     return Promise.reject(error);
-    //                 }
-    //             }
-    //             return Promise.reject(error);
-    //         }
-    //     );
-
-    //     return instance;
-    // }, [accessToken, refreshToken, logout]);
-
+    // Silent refresh on app load
     useEffect(() => {
-        const requestIntercept = api.interceptors.request.use(
-            config => {
+        (async () => {
+            await refreshToken();
+            setLoading(false);
+        })();
+    }, [refreshToken]);
+
+    // Axios interceptors
+    const axiosPrivate = useCallback(() => {
+        const instance = axios;
+
+        // attach access token
+        instance.interceptors.request.use(
+            (config) => {
                 if (accessToken) {
-                    config.headers.Authorization = `Bearer ${accessToken}`;
+                    config.headers["Authorization"] = `Bearer ${accessToken}`;
                 }
+                config.withCredentials = true;
                 return config;
-            }
+            },
+            (error) => Promise.reject(error)
         );
 
-        const responseIntercept = api.interceptors.response.use(
-            res => res,
-            async error => {
+        // handle 401
+        instance.interceptors.response.use(
+            (res) => res,
+            async (error) => {
                 const prevRequest = error.config;
-
                 if (error.response?.status === 401 && !prevRequest._retry) {
                     prevRequest._retry = true;
                     const newToken = await refreshToken();
-
                     if (newToken) {
-                        prevRequest.headers.Authorization = `Bearer ${newToken}`;
-                        return api(prevRequest);
-                    } else {
-                        await logout();
+                        prevRequest.headers["Authorization"] = `Bearer ${newToken}`;
+                        return instance(prevRequest);
                     }
+                    await logout();
                 }
                 return Promise.reject(error);
             }
         );
 
-        return () => {
-            api.interceptors.request.eject(requestIntercept);
-            api.interceptors.response.eject(responseIntercept);
-        };
+        return instance;
     }, [accessToken, refreshToken, logout]);
 
     return (
-        <AuthContext.Provider value={{ accessToken, setAccessToken, logout }}>
-
+        <AuthContext.Provider
+            value={{
+                accessToken,
+                setAccessToken,
+                user,
+                setUser,    
+                isAuthenticated: !!accessToken,
+                logout,
+                axiosPrivate,
+                loading,
+            }}
+        >
             {!loading && children}
         </AuthContext.Provider>
     );
