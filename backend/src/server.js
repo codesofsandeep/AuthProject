@@ -57,7 +57,6 @@
 //         app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 //     })
 //     .catch(console.error);
-
 require('dotenv').config();
 
 const express = require('express');
@@ -86,22 +85,14 @@ const whitelist = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (Postman, mobile apps, etc.)
-      if (!origin) return callback(null, true);
-
-      if (whitelist.includes(origin)) {
-        return callback(null, true);
-      }
-
+      if (!origin) return callback(null, true); // allow Postman, mobile apps, etc.
+      if (whitelist.includes(origin)) return callback(null, true);
       callback(new Error('Not allowed by CORS'));
     },
-    credentials: true,
+    credentials: true, // allow cookies
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 );
-
-// Preflight requests for all routes
-app.options('*', cors({ origin: whitelist, credentials: true }));
 
 // =======================
 // ROUTES
